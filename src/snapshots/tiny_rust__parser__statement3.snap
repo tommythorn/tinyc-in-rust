@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"{ b = 666; c = 3; d = b; }\").statement())"
+---
+Seq(Seq(Expr(Set(Var("b"), Cst(666))), Expr(Set(Var("c"), Cst(3)))), Expr(Set(Var("d"), Var("b"))))

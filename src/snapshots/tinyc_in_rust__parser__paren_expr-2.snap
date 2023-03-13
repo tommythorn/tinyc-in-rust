@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\" (x < 7) y;\").paren_expr())"
+---
+Lt(Var("x"), Cst(7))

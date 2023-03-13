@@ -1,0 +1,5 @@
+---
+source: src/tests.rs
+expression: "show_code(\"a = 42;\")"
+---
+[Push, Integer(42), Store, Address(0), Pop, Halt]

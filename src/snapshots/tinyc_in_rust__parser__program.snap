@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"a = 42;\").program())"
+---
+Prog(Expr(Set(Var("a"), Cst(42))))

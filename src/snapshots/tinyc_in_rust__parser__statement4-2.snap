@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser ::\n    new(\"while (x < 7) { b = b - 1; c = c + b; }\").statement())"
+---
+While(Lt(Var("x"), Cst(7)), Seq(Expr(Set(Var("b"), Sub(Var("b"), Cst(1)))), Expr(Set(Var("c"), Add(Var("c"), Var("b"))))))

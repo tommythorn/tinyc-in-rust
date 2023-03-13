@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"a-b-c\").sum())"
+---
+Sub(Sub(Var("a"), Var("b")), Var("c"))

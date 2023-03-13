@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"2 < 4\").cond())"
+---
+Lt(Cst(2), Cst(4))

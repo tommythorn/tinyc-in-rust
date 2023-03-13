@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"2+3-4\").sum())"
+---
+Sub(Add(Cst(2), Cst(3)), Cst(4))

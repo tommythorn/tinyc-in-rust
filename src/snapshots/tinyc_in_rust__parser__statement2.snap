@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"if (2) b = 42; else b = 666;\").statement())"
+---
+If2(Cst(2), Expr(Set(Var("b"), Cst(42))), Expr(Set(Var("b"), Cst(666))))

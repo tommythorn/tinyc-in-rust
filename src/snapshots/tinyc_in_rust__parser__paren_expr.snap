@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"(2-(3-4))\").paren_expr())"
+---
+Sub(Cst(2), Sub(Cst(3), Cst(4)))

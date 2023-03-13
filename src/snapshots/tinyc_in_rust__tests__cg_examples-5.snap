@@ -1,0 +1,5 @@
+---
+source: src/tests.rs
+expression: show_code(ex)
+---
+[Push, Integer(1), Store, Address(8), Pop, Fetch, Address(8), Push, Integer(10), Add, Store, Address(8), Push, Integer(50), Lt, Jz, Address(19), Jmp, Address(5), Halt]

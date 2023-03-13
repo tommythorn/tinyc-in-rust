@@ -1,0 +1,5 @@
+---
+source: src/parser.rs
+expression: "format!(\"{:?}\", Parser :: new(\"a = 42 - 666\").expr())"
+---
+Set(Var("a"), Sub(Cst(42), Cst(666)))
