@@ -121,14 +121,16 @@ impl<'a> Parser<'a> {
     fn sum(&mut self) -> Node {
         let mut t = self.term();
         loop {
-            if matches!(self.sym(), Token::Plus) {
-                self.next_sym();
-                t = Node::Add(Box::new(t), Box::new(self.term()));
-            } else if matches!(self.sym(), Token::Minus) {
-                self.next_sym();
-                t = Node::Sub(Box::new(t), Box::new(self.term()));
-            } else {
-                return t;
+            match self.sym() {
+                Token::Plus => {
+                    self.next_sym();
+                    t = Node::Add(Box::new(t), Box::new(self.term()));
+                }
+                Token::Minus => {
+                    self.next_sym();
+                    t = Node::Sub(Box::new(t), Box::new(self.term()));
+                }
+                _ => return t,
             }
         }
     }
@@ -173,58 +175,65 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Node {
-        if matches!(self.sym(), Token::IfSym) {
-            /* "if" <paren_expr> <statement> */
-            self.next_sym();
-            let cond = self.cond();
-            let then = self.statement();
-            if matches!(self.sym(), Token::ElseSym) {
-                /* ... "else" <statement> */
+        match self.sym() {
+            Token::IfSym => {
+                /* "if" <paren_expr> <statement> */
                 self.next_sym();
-                Node::If2(Box::new(cond), Box::new(then), Box::new(self.statement()))
-            } else {
-                Node::If1(Box::new(cond), Box::new(then))
+                let cond = self.cond();
+                let then = self.statement();
+                if matches!(self.sym(), Token::ElseSym) {
+                    /* ... "else" <statement> */
+                    self.next_sym();
+                    Node::If2(Box::new(cond), Box::new(then), Box::new(self.statement()))
+                } else {
+                    Node::If1(Box::new(cond), Box::new(then))
+                }
             }
-        } else if matches!(self.sym(), Token::WhileSym) {
-            /* "while" <paren_expr> <statement> */
-            self.next_sym();
-            let cond = self.paren_expr();
-            Node::While(Box::new(cond), Box::new(self.statement()))
-        } else if matches!(self.sym(), Token::DoSym) {
-            /* "do" <statement> "while" <paren_expr> ";" */
-            self.next_sym();
-            let body = self.statement();
-            if !matches!(self.sym(), Token::WhileSym) {
-                self.lex.syntax_error("expected `while'");
+            Token::WhileSym => {
+                /* "while" <paren_expr> <statement> */
+                self.next_sym();
+                let cond = self.paren_expr();
+                Node::While(Box::new(cond), Box::new(self.statement()))
             }
-            self.next_sym();
-            let cond = self.paren_expr();
-            if !matches!(self.sym(), Token::Semi) {
-                self.lex.syntax_error("expected `;'");
+            Token::DoSym => {
+                /* "do" <statement> "while" <paren_expr> ";" */
+                self.next_sym();
+                let body = self.statement();
+                if !matches!(self.sym(), Token::WhileSym) {
+                    self.lex.syntax_error("expected `while'");
+                }
+                self.next_sym();
+                let cond = self.paren_expr();
+                if !matches!(self.sym(), Token::Semi) {
+                    self.lex.syntax_error("expected `;'");
+                }
+                self.next_sym();
+                Node::Do(Box::new(body), Box::new(cond))
             }
-            self.next_sym();
-            Node::Do(Box::new(body), Box::new(cond))
-        } else if matches!(self.sym(), Token::Semi) {
-            /* ";" */
-            self.next_sym();
-            Node::Empty
-        } else if matches!(self.sym(), Token::Lbra) {
-            /* "{" { <statement> } "}" */
-            self.next_sym();
-            let mut x = self.statement();
-            while !matches!(self.sym(), Token::Rbra) {
-                x = Node::Seq(Box::new(x), Box::new(self.statement()));
+            Token::Semi => {
+                /* ";" */
+                self.next_sym();
+                Node::Empty
             }
-            self.next_sym();
-            x
-        } else {
-            /* <expr> ";" */
-            let x = self.expr();
-            if !matches!(self.sym(), Token::Semi) {
-                self.lex.syntax_error("expected `;'");
+            Token::Lbra => {
+                /* "{" { <statement> } "}" */
+                self.next_sym();
+                let mut x = self.statement();
+                while !matches!(self.sym(), Token::Rbra) {
+                    x = Node::Seq(Box::new(x), Box::new(self.statement()));
+                }
+                self.next_sym();
+                x
             }
-            self.next_sym();
-            Node::Expr(Box::new(x))
+            _ => {
+                /* <expr> ";" */
+                let x = self.expr();
+                if !matches!(self.sym(), Token::Semi) {
+                    self.lex.syntax_error("expected `;'");
+                }
+                self.next_sym();
+                Node::Expr(Box::new(x))
+            }
         }
     }
 
