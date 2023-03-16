@@ -20,7 +20,10 @@ pub type BNode = Box<Node>;
 /// everything, forgoing a bit of type safety for brevity.
 #[derive(Debug)]
 pub enum Node {
-    /// Contains the named variable
+    /// Contains the named variable.  Note, cloning the string is a
+    /// very expensive operation.  Better would be an index into the
+    /// lexers symbol table, or a tricky option, a string slice from
+    /// the original source (left as an exercise).
     Var(String),
 
     /// Contains integer constants
@@ -57,10 +60,10 @@ pub enum Node {
     Seq(BNode, BNode),
 
     /// The expression statement
-    Expr(Box<Node>),
+    Expr(BNode),
 
     /// The top-level program (there should be exactly one of these)
-    Prog(Box<Node>),
+    Prog(BNode),
 }
 
 /// The main entry point to the parser

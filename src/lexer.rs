@@ -139,7 +139,7 @@ impl<'a> Lexer<'a> {
             }
 
             'a'..='z' => {
-                let mut id_name: String = String::new();
+                let mut id_name = String::new();
                 while 'a' <= self.ch() && self.ch() <= 'z' || self.ch() == '_' {
                     id_name.push(self.ch());
                     self.next_ch();

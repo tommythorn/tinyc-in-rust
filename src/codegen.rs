@@ -143,7 +143,7 @@ impl Codegen {
                 let Node::Var(v) = *var else {
                     panic!("We expected a Var, not {:?}", *var);
                 };
-                self.code.push(Insn::Address(self.global(v.as_str())));
+                self.code.push(Insn::Address(self.global(&v)));
             }
             Node::Cst(val) => {
                 self.code.push(Insn::Push);
@@ -151,7 +151,7 @@ impl Codegen {
             }
             Node::Var(v) => {
                 self.code.push(Insn::Fetch);
-                self.code.push(Insn::Address(self.global(v.as_str())));
+                self.code.push(Insn::Address(self.global(&v)));
             }
             Node::Lt(a, b) => {
                 self.compile(*a);
