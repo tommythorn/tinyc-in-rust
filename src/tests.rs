@@ -9,29 +9,21 @@ use insta::assert_snapshot;
 #[test]
 fn test_lexer() {
     let mut lex = Lexer::new("2 3 alpha beta ={}");
-    assert!(matches!(lex.sym, Token::Int(2)));
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Int(3)));
-    lex.next_sym();
-    assert!(match &lex.sym {
+    assert!(matches!(lex.get_token().1, Token::Int(2)));
+    assert!(matches!(lex.get_token().1, Token::Int(3)));
+    assert!(match lex.get_token().1 {
         Token::Id(v) => v == "alpha",
         _ => false,
     });
-    lex.next_sym();
-    assert!(match &lex.sym {
+    assert!(match lex.get_token().1 {
         Token::Id(v) => v == "beta",
         _ => false,
     });
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Equal));
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Lbra));
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Rbra));
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Eoi));
-    lex.next_sym();
-    assert!(matches!(lex.sym, Token::Eoi));
+    assert!(matches!(lex.get_token().1, Token::Equal));
+    assert!(matches!(lex.get_token().1, Token::Lbra));
+    assert!(matches!(lex.get_token().1, Token::Rbra));
+    assert!(matches!(lex.get_token().1, Token::Eoi));
+    assert!(matches!(lex.get_token().1, Token::Eoi));
 }
 
 // *** Compiler Testing ***

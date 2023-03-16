@@ -7,7 +7,7 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{Lexer, SourcePosition, Token};
 
 /// To create recursive types in Rust, we heap allocate the recursive
 /// subparts, via the `Box` type.  To keep the `Node` type more
@@ -81,24 +81,30 @@ pub fn parse(src: &str) -> Node {
 /// representation
 struct Parser<'a> {
     lex: Lexer<'a>,
+    pos: SourcePosition,
+    lookahead: Token,
 }
 
 impl<'a> Parser<'a> {
     /// Prepare for parsing, given the provided source code
     fn new(src: &'a str) -> Self {
-        Self {
+        let mut parser = Self {
             lex: Lexer::new(src),
-        }
+            pos: SourcePosition::default(),
+            lookahead: Token::default(),
+        };
+        parser.next_token();
+        parser
+    }
+
+    /// Takes the next token from the lexer
+    fn next_token(&mut self) {
+        (self.pos, self.lookahead) = self.lex.get_token();
     }
 
     /// Returns the current token (also know as the "lookahead")
     fn sym(&self) -> Token {
-        self.lex.sym.clone()
-    }
-
-    /// Fetches the next token from the lexer
-    fn next_sym(&mut self) {
-        self.lex.next_sym();
+        self.lookahead.clone()
     }
 
     /// Parser for the `<term>` syntax
@@ -106,11 +112,11 @@ impl<'a> Parser<'a> {
     fn term(&mut self) -> Node {
         match self.sym() {
             Token::Id(name) => {
-                self.next_sym();
+                self.next_token();
                 Node::Var(name)
             }
             Token::Int(val) => {
-                self.next_sym();
+                self.next_token();
                 Node::Cst(val)
             }
             _ => self.paren_expr(),
@@ -123,11 +129,11 @@ impl<'a> Parser<'a> {
         loop {
             match self.sym() {
                 Token::Plus => {
-                    self.next_sym();
+                    self.next_token();
                     t = Node::Add(Box::new(t), Box::new(self.term()));
                 }
                 Token::Minus => {
-                    self.next_sym();
+                    self.next_token();
                     t = Node::Sub(Box::new(t), Box::new(self.term()));
                 }
                 _ => return t,
@@ -139,7 +145,7 @@ impl<'a> Parser<'a> {
     fn cond(&mut self) -> Node {
         let l = self.sum();
         if matches!(self.sym(), Token::Less) {
-            self.next_sym();
+            self.next_token();
             Node::Lt(Box::new(l), Box::new(self.sum()))
         } else {
             l
@@ -153,7 +159,7 @@ impl<'a> Parser<'a> {
         }
         let t = self.cond(); // == Node::Var(..)
         if matches!(self.sym(), Token::Equal) {
-            self.next_sym();
+            self.next_token();
             Node::Set(Box::new(t), Box::new(self.expr()))
         } else {
             t
@@ -162,14 +168,14 @@ impl<'a> Parser<'a> {
 
     fn paren_expr(&mut self) -> Node {
         if !matches!(self.sym(), Token::Lpar) {
-            self.lex.syntax_error("`(' expected");
+            self.lex.syntax_error(self.pos, "`(' expected");
         }
-        self.next_sym();
+        self.next_token();
         let x = self.expr();
         if !matches!(self.sym(), Token::Rpar) {
-            self.lex.syntax_error("`)' expected");
+            self.lex.syntax_error(self.pos, "`)' expected");
         }
-        self.next_sym();
+        self.next_token();
 
         x
     }
@@ -178,12 +184,12 @@ impl<'a> Parser<'a> {
         match self.sym() {
             Token::IfSym => {
                 /* "if" <paren_expr> <statement> */
-                self.next_sym();
+                self.next_token();
                 let cond = self.cond();
                 let then = self.statement();
                 if matches!(self.sym(), Token::ElseSym) {
                     /* ... "else" <statement> */
-                    self.next_sym();
+                    self.next_token();
                     Node::If2(Box::new(cond), Box::new(then), Box::new(self.statement()))
                 } else {
                     Node::If1(Box::new(cond), Box::new(then))
@@ -191,47 +197,47 @@ impl<'a> Parser<'a> {
             }
             Token::WhileSym => {
                 /* "while" <paren_expr> <statement> */
-                self.next_sym();
+                self.next_token();
                 let cond = self.paren_expr();
                 Node::While(Box::new(cond), Box::new(self.statement()))
             }
             Token::DoSym => {
                 /* "do" <statement> "while" <paren_expr> ";" */
-                self.next_sym();
+                self.next_token();
                 let body = self.statement();
                 if !matches!(self.sym(), Token::WhileSym) {
-                    self.lex.syntax_error("expected `while'");
+                    self.lex.syntax_error(self.pos, "expected `while'");
                 }
-                self.next_sym();
+                self.next_token();
                 let cond = self.paren_expr();
                 if !matches!(self.sym(), Token::Semi) {
-                    self.lex.syntax_error("expected `;'");
+                    self.lex.syntax_error(self.pos, "expected `;'");
                 }
-                self.next_sym();
+                self.next_token();
                 Node::Do(Box::new(body), Box::new(cond))
             }
             Token::Semi => {
                 /* ";" */
-                self.next_sym();
+                self.next_token();
                 Node::Empty
             }
             Token::Lbra => {
                 /* "{" { <statement> } "}" */
-                self.next_sym();
+                self.next_token();
                 let mut x = self.statement();
                 while !matches!(self.sym(), Token::Rbra) {
                     x = Node::Seq(Box::new(x), Box::new(self.statement()));
                 }
-                self.next_sym();
+                self.next_token();
                 x
             }
             _ => {
                 /* <expr> ";" */
                 let x = self.expr();
                 if !matches!(self.sym(), Token::Semi) {
-                    self.lex.syntax_error("expected `;'");
+                    self.lex.syntax_error(self.pos, "expected `;'");
                 }
-                self.next_sym();
+                self.next_token();
                 Node::Expr(Box::new(x))
             }
         }
@@ -241,7 +247,7 @@ impl<'a> Parser<'a> {
         /* <program> ::= <statement> */
         let stmt = self.statement();
         if !matches!(self.sym(), Token::Eoi) {
-            self.lex.syntax_error("program ended here");
+            self.lex.syntax_error(self.pos, "program ended here");
         }
         Node::Prog(Box::new(stmt))
     }
