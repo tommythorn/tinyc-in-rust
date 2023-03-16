@@ -1,11 +1,15 @@
+//! The lexical analysis for Tiny-C (henceforth the "lexer")
+//!
+//! The lexer is responsible for taking the source code as a sequence
+//! of characters and turn it into a sequence of token which the
+//! parser consumes.
+
 #![warn(clippy::all, clippy::pedantic)]
 
-/* Copyright (C) 2023 by Tommy Thorn, All Rights Reserved. */
-
-/* Lexer. */
-
-/// Source code is first broken into atomic `Token`s which are the
-/// only thing the `Parser` seens.
+/// The tokens are keywards, special characters, integer constants,
+/// and identifiers.  Strong types are really helpful here.  Note, in
+/// contrast to typical C implementations, the integer value and the
+/// identifier string is strongly tied to the corresponding token.
 #[derive(Clone, Debug)]
 pub enum Token {
     DoSym,
@@ -26,7 +30,10 @@ pub enum Token {
     Eoi,
 }
 
-/// Source code position
+/// Source code position for syntax error reporting.  Both are 1-based
+/// (ie. the starting position is (1,1).  Note, the implementation
+/// below only accepts spaces and tabs as whitespace.  No tabs nor
+/// comments.
 #[derive(Clone, Copy)]
 struct Pos {
     line: usize,
@@ -43,10 +50,10 @@ pub struct Lexer<'a> {
     /// The peekable iterator that gives us chars from the source
     itr: std::iter::Peekable<std::str::Chars<'a>>,
 
-    /// The _current_ position (line, col) in the source
+    /// The source code position of the peekable character
     pos: Pos,
 
-    /// The position of the token in `sym`
+    /// The starting position of the token in `sym`
     sym_pos: Pos,
 
     /// The current token (the "lookahead")
@@ -68,15 +75,16 @@ impl<'a> Lexer<'a> {
         lex
     }
 
-    /// Report a error message in the context of the current lexer position and terminate (panic)
-    /// # Panics
-    /// Sure does
+    /// Report a error message in the context of the current lexer
+    /// position and terminate
     pub fn syntax_error(&mut self, msg: &str) {
         eprintln!("input:{}:{}:{msg}", self.sym_pos.line, self.sym_pos.col);
         // Proper error handling is out of scope for now.
         std::process::exit(1);
     }
 
+    /// Consumes the current character and advances to the next,
+    /// updating the current position in the process
     fn next_ch(&mut self) {
         self.itr.next();
         self.pos.col += 1;
@@ -86,6 +94,11 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Convenient access to the current position.  We turn
+    /// end-of-file into the null ('\0') charater which isn't the
+    /// usual Rust approach (which would use Option<> types), however
+    /// this make the code a little simpler and follows the original
+    /// more closely.
     fn ch(&mut self) -> char {
         *self.itr.peek().unwrap_or(&'\0')
     }
@@ -120,6 +133,8 @@ impl<'a> Lexer<'a> {
 
                 self.sym = Token::Int(int_val);
 
+                // As we have already advanced past the current we
+                // return to skip the next_ch() below.
                 return;
             }
 
@@ -130,6 +145,9 @@ impl<'a> Lexer<'a> {
                     self.next_ch();
                 }
 
+                // Note, a more conventional approach would use a hash
+                // table for the symbol table and store the keywords
+                // there along with source code symbols.
                 self.sym = match id_name.as_str() {
                     "do" => Token::DoSym,
                     "else" => Token::ElseSym,
