@@ -10,7 +10,7 @@
 /// and identifiers.  Strong types are really helpful here.  Note, in
 /// contrast to typical C implementations, the integer value and the
 /// identifier string is strongly tied to the corresponding token.
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub enum Token {
     DoSym,
     ElseSym,

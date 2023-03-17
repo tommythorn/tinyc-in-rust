@@ -102,20 +102,19 @@ impl<'a> Parser<'a> {
         (self.pos, self.lookahead) = self.lex.get_token();
     }
 
-    /// Returns the current token (also know as the "lookahead")
-    fn sym(&self) -> Token {
-        self.lookahead.clone()
-    }
-
     /// Parser for the `<term>` syntax
     /// `<term> ::= <id> | <int> | <paren_expr>`
     fn term(&mut self) -> Node {
-        match self.sym() {
+        match &mut self.lookahead {
+            // NB: "std::mem::take(name)" [thanks skeletizzle] is more
+            // efficient than the more obvious `name.to_string()`
             Token::Id(name) => {
+                let name = std::mem::take(name); // Altn: name.to_string();
                 self.next_token();
                 Node::Var(name)
             }
             Token::Int(val) => {
+                let val = *val;
                 self.next_token();
                 Node::Cst(val)
             }
@@ -127,7 +126,7 @@ impl<'a> Parser<'a> {
     fn sum(&mut self) -> Node {
         let mut t = self.term();
         loop {
-            match self.sym() {
+            match self.lookahead {
                 Token::Plus => {
                     self.next_token();
                     t = Node::Add(Box::new(t), Box::new(self.term()));
@@ -144,7 +143,7 @@ impl<'a> Parser<'a> {
     /* <test> ::= <sum> | <sum> "<" <sum> */
     fn cond(&mut self) -> Node {
         let l = self.sum();
-        if matches!(self.sym(), Token::Less) {
+        if matches!(self.lookahead, Token::Less) {
             self.next_token();
             Node::Lt(Box::new(l), Box::new(self.sum()))
         } else {
@@ -154,11 +153,11 @@ impl<'a> Parser<'a> {
 
     /* <expr> ::= <test> | <id> "=" <expr> */
     fn expr(&mut self) -> Node {
-        if !matches!(self.sym(), Token::Id(_)) {
+        if !matches!(self.lookahead, Token::Id(_)) {
             return self.cond();
         }
         let t = self.cond(); // == Node::Var(..)
-        if matches!(self.sym(), Token::Equal) {
+        if matches!(self.lookahead, Token::Equal) {
             self.next_token();
             Node::Set(Box::new(t), Box::new(self.expr()))
         } else {
@@ -167,12 +166,12 @@ impl<'a> Parser<'a> {
     }
 
     fn paren_expr(&mut self) -> Node {
-        if !matches!(self.sym(), Token::Lpar) {
+        if !matches!(self.lookahead, Token::Lpar) {
             self.lex.syntax_error(self.pos, "`(' expected");
         }
         self.next_token();
         let x = self.expr();
-        if !matches!(self.sym(), Token::Rpar) {
+        if !matches!(self.lookahead, Token::Rpar) {
             self.lex.syntax_error(self.pos, "`)' expected");
         }
         self.next_token();
@@ -181,13 +180,13 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&mut self) -> Node {
-        match self.sym() {
+        match self.lookahead {
             Token::IfSym => {
                 /* "if" <paren_expr> <statement> */
                 self.next_token();
                 let cond = self.cond();
                 let then = self.statement();
-                if matches!(self.sym(), Token::ElseSym) {
+                if matches!(self.lookahead, Token::ElseSym) {
                     /* ... "else" <statement> */
                     self.next_token();
                     Node::If2(Box::new(cond), Box::new(then), Box::new(self.statement()))
@@ -205,12 +204,12 @@ impl<'a> Parser<'a> {
                 /* "do" <statement> "while" <paren_expr> ";" */
                 self.next_token();
                 let body = self.statement();
-                if !matches!(self.sym(), Token::WhileSym) {
+                if !matches!(self.lookahead, Token::WhileSym) {
                     self.lex.syntax_error(self.pos, "expected `while'");
                 }
                 self.next_token();
                 let cond = self.paren_expr();
-                if !matches!(self.sym(), Token::Semi) {
+                if !matches!(self.lookahead, Token::Semi) {
                     self.lex.syntax_error(self.pos, "expected `;'");
                 }
                 self.next_token();
@@ -225,7 +224,7 @@ impl<'a> Parser<'a> {
                 /* "{" { <statement> } "}" */
                 self.next_token();
                 let mut x = self.statement();
-                while !matches!(self.sym(), Token::Rbra) {
+                while !matches!(self.lookahead, Token::Rbra) {
                     x = Node::Seq(Box::new(x), Box::new(self.statement()));
                 }
                 self.next_token();
@@ -234,7 +233,7 @@ impl<'a> Parser<'a> {
             _ => {
                 /* <expr> ";" */
                 let x = self.expr();
-                if !matches!(self.sym(), Token::Semi) {
+                if !matches!(self.lookahead, Token::Semi) {
                     self.lex.syntax_error(self.pos, "expected `;'");
                 }
                 self.next_token();
@@ -246,7 +245,7 @@ impl<'a> Parser<'a> {
     fn program(&mut self) -> Node {
         /* <program> ::= <statement> */
         let stmt = self.statement();
-        if !matches!(self.sym(), Token::Eoi) {
+        if !matches!(self.lookahead, Token::Eoi) {
             self.lex.syntax_error(self.pos, "program ended here");
         }
         Node::Prog(Box::new(stmt))
